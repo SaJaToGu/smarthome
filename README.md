@@ -54,4 +54,5 @@ docker-compose down
 
 - Docker-Gruppenmitgliedschaft für `guido` wurde gesetzt. Falls `docker` ohne `sudo` noch nicht geht, einmal neu einloggen oder den Raspberry Pi neu starten.
 - MQTT läuft aktuell außerhalb von Docker als Systemdienst und ist unter `192.168.178.40:1883` erreichbar.
+- Node-RED ist passwortgeschützt. Die lokalen Zugangsdaten liegen absichtlich nicht im Git, sondern unter `/home/guido/smarthome/.secrets/`.
 - Keine produktiven Automationen ohne vorherige manuelle Prüfung aktivieren.
