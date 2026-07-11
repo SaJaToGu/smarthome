@@ -1,0 +1,44 @@
+name: AIS-ready smart-home task
+labels: ["state/backlog", "agent/planner"]
+description: Smart-home task structured for AIS planning or implementation
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use AIS-style labels: `theme/*`, `area/*`, `kind/*`, `state/*`, `priority/*`, `agent/*`.
+        Do not include secrets, passwords, API keys, tokens, or private credentials.
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What should change or be built?
+      placeholder: "Example: Build solar-based west-side shading for the shutters."
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Relevant devices, files, MQTT topics, or docs.
+      placeholder: "Link docs/jalousien-shelly.md, docs/solar-beschattung-konzept.md, etc."
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Concrete checks that prove the task is done.
+      placeholder: |
+        - Flow imports without Node-RED errors.
+        - Debug mode does not move shutters.
+        - Manual test for Wohnzimmer1 succeeds.
+    validations:
+      required: true
+  - type: textarea
+    id: safety
+    attributes:
+      label: Safety notes
+      description: What must not happen?
+      placeholder: No shutter movement without explicit manual test approval. No secrets in Git.
+    validations:
+      required: true
