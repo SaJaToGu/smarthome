@@ -23,5 +23,7 @@ backups/*.zip
 # OS/editor
 .DS_Store
 .vscode/
+__pycache__/
+*.py[cod]
 
 .secrets/
