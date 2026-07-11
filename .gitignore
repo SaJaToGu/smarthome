@@ -1,0 +1,25 @@
+.env
+*.log
+
+# Runtime data / secrets
+nodered/data/*
+!nodered/data/.gitkeep
+influxdb/data/*
+!influxdb/data/.gitkeep
+influxdb/config/*
+!influxdb/config/.gitkeep
+grafana/data/*
+!grafana/data/.gitkeep
+grafana/provisioning/datasources/*.yaml
+!grafana/provisioning/.gitkeep
+!grafana/provisioning/datasources/.gitkeep
+uptime-kuma/data/*
+!uptime-kuma/data/.gitkeep
+backups/*.tar
+backups/*.tar.gz
+backups/*.zip
+!backups/.gitkeep
+
+# OS/editor
+.DS_Store
+.vscode/
