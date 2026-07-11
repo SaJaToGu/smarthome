@@ -1,0 +1,151 @@
+[
+  {
+    "id": "tab-solar-shading-draft",
+    "type": "tab",
+    "label": "ENTWURF Solar-Beschattung Jalousien",
+    "disabled": true,
+    "info": "Deaktivierter Entwurf. Fragt SENEC/Solarleistung read-only ab und berechnet nur einen Beschattungsplan. Keine Rollo-Ausgänge sind angeschlossen."
+  },
+  {
+    "id": "tls-senec-insecure-local",
+    "type": "tls-config",
+    "name": "SENEC local self-signed",
+    "cert": "",
+    "key": "",
+    "ca": "",
+    "certname": "",
+    "keyname": "",
+    "caname": "",
+    "servername": "",
+    "verifyservercert": false,
+    "alpnprotocol": ""
+  },
+  {
+    "id": "comment-solar-shading-overview",
+    "type": "comment",
+    "z": "tab-solar-shading-draft",
+    "name": "HERMES ENTWURF: solarbasierte Ost-/West-Beschattung",
+    "info": "Ost: Küche2, GästeBad, Badezimmer, Arbeitszimmer2 morgens bei starker Sonne auf 50%. West: Schlafzimmer1/2, Wohnzimmer1/2 ab ca. 13:00 auf 50%. Dieser Tab ist deaktiviert und enthält nur Entwurfslogik/Debug.",
+    "x": 350,
+    "y": 40,
+    "wires": []
+  },
+  {
+    "id": "inject-senec-poll-draft",
+    "type": "inject",
+    "z": "tab-solar-shading-draft",
+    "name": "alle 2 min Solarleistung prüfen",
+    "props": [
+      {
+        "p": "payload"
+      },
+      {
+        "p": "topic",
+        "vt": "str"
+      }
+    ],
+    "repeat": "120",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "senec",
+    "payload": "{\"ENERGY\":{}}",
+    "payloadType": "json",
+    "x": 220,
+    "y": 120,
+    "wires": [
+      [
+        "http-senec-read-draft"
+      ]
+    ]
+  },
+  {
+    "id": "http-senec-read-draft",
+    "type": "http request",
+    "z": "tab-solar-shading-draft",
+    "name": "SENEC Energiedaten lesen (read-only)",
+    "method": "POST",
+    "ret": "obj",
+    "paytoqs": "body",
+    "url": "https://192.168.178.121/lala.cgi",
+    "tls": "tls-senec-insecure-local",
+    "persist": false,
+    "proxy": "",
+    "authType": "",
+    "senderr": false,
+    "headers": [],
+    "x": 560,
+    "y": 120,
+    "wires": [
+      [
+        "fn-shading-decision-draft"
+      ]
+    ]
+  },
+  {
+    "id": "fn-shading-decision-draft",
+    "type": "function",
+    "z": "tab-solar-shading-draft",
+    "name": "Beschattung entscheiden (nur Debug-Plan)",
+    "func": "// ENTWURF - erzeugt nur einen Plan, keine Rollo-Kommandos.\n// Startwerte nach Beobachtung anpassen.\nconst cfg = {\n    shadeOnW: 2500,       // Beschattung aktiv ab PV-Leistung\n    shadeOffW: 1200,      // später für Hysterese: unter diesem Wert lösen\n    shadePos: 50,\n    openPos: 100,\n    eastStartHour: 7,\n    eastEndHour: 13,\n    westEndHour: 20.5,\n    randomDelayMinSec: 30,\n    randomDelayMaxSec: 480\n};\n\nfunction decodeSenecValue(data) {\n    if (data === undefined || data === null) return NaN;\n    if (typeof data === 'number') return data;\n    if (typeof data !== 'string') return NaN;\n    const tmp = data.split('_');\n    if (tmp.length < 2) return Number(data);\n    const type = tmp[0];\n    const value = tmp[1];\n    if (type === 'fl') {\n        const buf = Buffer.from(value, 'hex');\n        return Math.round(buf.readFloatBE(0) * 100) / 100;\n    }\n    if (['u8','u1','u3','u6'].includes(type)) return parseInt(value, 16);\n    if (['i1','i3','i8'].includes(type)) return parseInt(value, 16);\n    return Number(value);\n}\n\nconst energy = msg.payload && msg.payload.ENERGY ? msg.payload.ENERGY : {};\nconst pvW = decodeSenecValue(energy.GUI_INVERTER_POWER);\nconst houseW = decodeSenecValue(energy.GUI_HOUSE_POW);\nconst gridW = decodeSenecValue(energy.GUI_GRID_POW);\nconst batteryW = decodeSenecValue(energy.GUI_BAT_DATA_POWER);\nconst batteryPct = decodeSenecValue(energy.GUI_BAT_DATA_FUEL_CHARGE);\nconst now = new Date();\nconst hour = now.getHours() + now.getMinutes() / 60;\n\nlet phase = 'none';\nif (hour >= cfg.eastStartHour && hour < cfg.eastEndHour) phase = 'east';\nelse if (hour >= cfg.eastEndHour && hour < cfg.westEndHour) phase = 'west';\n\nconst sunny = pvW >= cfg.shadeOnW;\nconst plan = {\n    ts: now.toISOString(),\n    pvW, houseW, gridW, batteryW, batteryPct, sunny, phase, cfg,\n    groups: {\n        east: ['Kueche2','GaesteBad','Badezimmer','Arbeitszimmer2'],\n        west: ['Schlafzimmer1','Schlafzimmer2','Wohnzimmer1','Wohnzimmer2']\n    },\n    actions: []\n};\n\nif (sunny && phase === 'east') {\n    plan.actions.push({group:'east', target:cfg.shadePos, reason:'morgens starke Solarleistung'});\n}\nif (phase === 'west') {\n    plan.actions.push({group:'east', target:cfg.openPos, reason:'Sonne ist auf Westseite gewechselt'});\n    if (sunny) plan.actions.push({group:'west', target:cfg.shadePos, reason:'nachmittags starke Solarleistung'});\n}\n\nmsg.payload = plan;\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 910,
+    "y": 120,
+    "wires": [
+      [
+        "debug-shading-plan-draft"
+      ]
+    ]
+  },
+  {
+    "id": "debug-shading-plan-draft",
+    "type": "debug",
+    "z": "tab-solar-shading-draft",
+    "name": "Beschattungsplan Debug - keine Rollo-Bewegung",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 1280,
+    "y": 120,
+    "wires": []
+  },
+  {
+    "id": "comment-east-devices",
+    "type": "comment",
+    "z": "tab-solar-shading-draft",
+    "name": "Ostseite: Küche2, GästeBad, Badezimmer, Arbeitszimmer2",
+    "info": "Küche2: shellies/shellyswitch25-1099F3/roller/0/command/pos payload 50. GästeBad: shellies/shellyswitch25-109DA4/roller/0/command bzw. command/pos nach Test. Badezimmer: Gen2 RPC topic shellyplus2pm-ecc9ffc14310/rpc. Arbeitszimmer2: Gen4 RPC topic shelly2pmg4-48f6eedad190/rpc.",
+    "x": 340,
+    "y": 220,
+    "wires": []
+  },
+  {
+    "id": "comment-west-devices",
+    "type": "comment",
+    "z": "tab-solar-shading-draft",
+    "name": "Westseite: Schlafzimmer1/2, Wohnzimmer1/2",
+    "info": "Schlafzimmer1: shellies/shellyswitch25-F3FDC4/roller/0/command. Schlafzimmer2: shellies/shellyswitch25-10A1DE/roller/0/command. Wohnzimmer1: shellies/shellyswitch25-10A277/roller/0/command. Wohnzimmer2: Gen4 RPC topic shelly2pmg4-58e6c530408c/rpc.",
+    "x": 320,
+    "y": 280,
+    "wires": []
+  },
+  {
+    "id": "comment-safety-next",
+    "type": "comment",
+    "z": "tab-solar-shading-draft",
+    "name": "Nächster Schritt: erst Debug, dann Einzelrollos testen",
+    "info": "Vor Aktivierung: Hysterese/Override ergänzen, Positionskommandos je Rollo testen, dann erst MQTT-Ausgänge mit Delay/Randomisierung anschließen.",
+    "x": 330,
+    "y": 340,
+    "wires": []
+  }
+]

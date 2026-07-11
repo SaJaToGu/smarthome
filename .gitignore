@@ -18,6 +18,7 @@ uptime-kuma/data/*
 backups/*.tar
 backups/*.tar.gz
 backups/*.zip
+backups/*.json
 !backups/.gitkeep
 
 # OS/editor
