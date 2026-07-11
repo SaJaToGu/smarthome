@@ -158,10 +158,35 @@ def smart_status(alerts: list[str], status: list[str], state: dict) -> None:
         return
     if re.search(r"SMART overall-health.*FAILED|SMART Health Status:\s*FAILED", out, re.I):
         alerts.append(f"SMART meldet FEHLER für {dev}")
-    for attr in ["Reallocated_Sector_Ct", "Current_Pending_Sector", "Offline_Uncorrectable", "UDMA_CRC_Error_Count", "Media_Wearout_Indicator"]:
+
+    # Baseline attributes every SSD should report; alert on any value above zero.
+    for attr in ["Reallocated_Sector_Ct", "Current_Pending_Sector", "Offline_Uncorrectable",
+                 "UDMA_CRC_Error_Count", "Program_Fail_Count_Chip", "Erase_Fail_Count_Chip",
+                 "Runtime_Invalid_Blk_Cnt"]:
         m = re.search(rf"\b{attr}\b.*?\s(\d+)\s*$", out, re.M)
-        if m and int(m.group(1)) > 0 and attr != "Media_Wearout_Indicator":
+        if m and int(m.group(1)) > 0:
             alerts.append(f"SMART auffällig auf {dev}: {attr}={m.group(1)}")
+
+    # Remaining lifetime — most SSD brands expose this; alert when dropping.
+    for attr in ["Remaining_Lifetime_Perc", "Media_Wearout_Indicator"]:
+        m = re.search(rf"\b{attr}\b.*?\s(\d+)\s*$", out, re.M)
+        if m:
+            pct = int(m.group(1))
+            if attr == "Media_Wearout_Indicator":
+                pct = 100 - pct  # inverted: 0 means 100%, rising means wear
+            if pct <= 10:
+                alerts.append(f"SSD {dev} Restlebensdauer kritisch: {pct}% ({attr})")
+            elif pct <= 20:
+                alerts.append(f"SSD {dev} Restlebensdauer niedrig: {pct}% ({attr})")
+            status.append(f"SMART Restlebensdauer ({attr}): {pct}%")
+            break  # only report one
+
+    # Temperature from SMART (independent of SoC temp from vcgencmd).
+    m_temp = re.search(r"\bTemperature_Celsius\b.*?\s(\d+)\s*$", out, re.M)
+    if m_temp:
+        smart_temp = int(m_temp.group(1))
+        if smart_temp >= 60:
+            alerts.append(f"SSD {dev} Temperatur hoch: {smart_temp} °C")
 
 
 def journal_status(alerts: list[str], status: list[str], state: dict, force_status: bool) -> None:

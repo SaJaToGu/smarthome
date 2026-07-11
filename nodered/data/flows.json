@@ -1,0 +1,291 @@
+[
+  {
+    "id": "tab-smarthome-base",
+    "type": "tab",
+    "label": "Smart-Home Basis / MQTT",
+    "disabled": false,
+    "info": "Basis-Flow: MQTT-Verbindung zum Mosquitto auf 192.168.178.40:1883 und read-only Shelly-Status. Keine Jalousie-Aktion wird automatisch ausgef\u00fchrt."
+  },
+  {
+    "id": "mqtt-broker-smarthome",
+    "type": "mqtt-broker",
+    "name": "Mosquitto 192.168.178.40",
+    "broker": "192.168.178.40",
+    "port": "1883",
+    "clientid": "nodered-smarthome",
+    "autoConnect": true,
+    "usetls": false,
+    "protocolVersion": "4",
+    "keepalive": "60",
+    "cleansession": true,
+    "birthTopic": "hermes/nodered/status",
+    "birthQos": "0",
+    "birthPayload": "online",
+    "birthMsg": {},
+    "closeTopic": "hermes/nodered/status",
+    "closeQos": "0",
+    "closePayload": "offline",
+    "closeMsg": {},
+    "willTopic": "hermes/nodered/status",
+    "willQos": "0",
+    "willPayload": "offline",
+    "willMsg": {},
+    "sessionExpiry": ""
+  },
+  {
+    "id": "inject-mqtt-test",
+    "type": "inject",
+    "z": "tab-smarthome-base",
+    "name": "MQTT Test senden",
+    "props": [
+      {
+        "p": "payload"
+      },
+      {
+        "p": "topic",
+        "vt": "str"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": true,
+    "onceDelay": "5",
+    "topic": "hermes/nodered/test",
+    "payload": "Node-RED MQTT test",
+    "payloadType": "str",
+    "x": 180,
+    "y": 100,
+    "wires": [
+      [
+        "mqtt-out-test"
+      ]
+    ]
+  },
+  {
+    "id": "mqtt-out-test",
+    "type": "mqtt out",
+    "z": "tab-smarthome-base",
+    "name": "an Mosquitto",
+    "topic": "",
+    "qos": "0",
+    "retain": "false",
+    "respTopic": "",
+    "contentType": "",
+    "userProps": "",
+    "correl": "",
+    "expiry": "",
+    "broker": "mqtt-broker-smarthome",
+    "x": 430,
+    "y": 100,
+    "wires": []
+  },
+  {
+    "id": "mqtt-in-shelly-status",
+    "type": "mqtt in",
+    "z": "tab-smarthome-base",
+    "name": "Shelly Status lesen",
+    "topic": "shellies/+/roller/0/#",
+    "qos": "0",
+    "datatype": "auto-detect",
+    "broker": "mqtt-broker-smarthome",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 180,
+    "y": 180,
+    "wires": [
+      [
+        "debug-shelly-status"
+      ]
+    ]
+  },
+  {
+    "id": "debug-shelly-status",
+    "type": "debug",
+    "z": "tab-smarthome-base",
+    "name": "Shelly Status Debug",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "true",
+    "targetType": "full",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 450,
+    "y": 180,
+    "wires": []
+  },
+  {
+    "id": "comment-next",
+    "type": "comment",
+    "z": "tab-smarthome-base",
+    "name": "N\u00e4chster Schritt",
+    "info": "Als n\u00e4chstes legen wir gezielte, manuelle Jalousie-Aktionen an. Noch keine Automatik aktivieren, bevor jede Jalousie einzeln getestet ist.",
+    "x": 170,
+    "y": 260,
+    "wires": []
+  },
+  {
+    "id": "tab-solar-shading-draft",
+    "type": "tab",
+    "label": "Solar-Beschattung Jalousien",
+    "disabled": false,
+    "info": "Aktiv. Ost (07:00-13:00): K\u00fcche2, G\u00e4steBad. West (13:00-20:30): Wohnzimmer1. Schwellwert: 2500W PV."
+  },
+  {
+    "id": "tls-senec-insecure-local",
+    "type": "tls-config",
+    "name": "SENEC local self-signed",
+    "cert": "",
+    "key": "",
+    "ca": "",
+    "certname": "",
+    "keyname": "",
+    "caname": "",
+    "servername": "",
+    "verifyservercert": false,
+    "alpnprotocol": ""
+  },
+  {
+    "id": "inject-senec-poll-live",
+    "type": "inject",
+    "z": "tab-solar-shading-draft",
+    "name": "alle 2 min Solarleistung pr\u00fcfen",
+    "props": [
+      {
+        "p": "payload"
+      },
+      {
+        "p": "topic",
+        "vt": "str"
+      }
+    ],
+    "repeat": "120",
+    "crontab": "",
+    "once": true,
+    "onceDelay": "5",
+    "topic": "senec",
+    "payload": "{\"ENERGY\":{}}",
+    "payloadType": "json",
+    "x": 220,
+    "y": 120,
+    "wires": [
+      [
+        "http-senec-read-live"
+      ]
+    ]
+  },
+  {
+    "id": "http-senec-read-live",
+    "type": "http request",
+    "z": "tab-solar-shading-draft",
+    "name": "SENEC Energiedaten lesen",
+    "method": "POST",
+    "ret": "obj",
+    "paytoqs": "body",
+    "url": "https://192.168.178.121/lala.cgi",
+    "tls": "tls-senec-insecure-local",
+    "persist": false,
+    "proxy": "",
+    "authType": "",
+    "senderr": false,
+    "headers": [],
+    "x": 560,
+    "y": 120,
+    "wires": [
+      [
+        "fn-shading-live"
+      ]
+    ]
+  },
+  {
+    "id": "fn-shading-live",
+    "type": "function",
+    "z": "tab-solar-shading-draft",
+    "name": "Solar-Beschattung \u2192 MQTT Rollos",
+    "func": "// Solar-Beschattung: liest SENEC-Daten und schickt MQTT-Positionskommandos.\n// Nur Erdgeschoss: Kueche2, GaesteBad, Wohnzimmer1 (getestet 12.07.2026).\nconst cfg = {\n    shadeOnW: 2500,\n    shadePos: 50,\n    openPos: 100,\n    eastStartHour: 7,\n    eastEndHour: 13,\n    westEndHour: 20.5,\n};\n\nfunction decodeSenecValue(data) {\n    if (data === undefined || data === null) return NaN;\n    if (typeof data === 'number') return data;\n    if (typeof data !== 'string') return NaN;\n    const tmp = data.split('_');\n    if (tmp.length < 2) return Number(data);\n    const type = tmp[0];\n    const value = tmp[1];\n    if (type === 'fl') {\n        const buf = Buffer.from(value, 'hex');\n        return Math.round(buf.readFloatBE(0) * 100) / 100;\n    }\n    if (['u8','u1','u3','u6'].includes(type)) return parseInt(value, 16);\n    if (['i1','i3','i8'].includes(type)) return parseInt(value, 16);\n    return Number(value);\n}\n\n// Shelly-ID Mapping (Gen1 roller/0/command/pos)\nconst devices = {\n    east: [\n        {name: 'Kueche2', shelly: 'shellyswitch25-1099F3'},\n        {name: 'GaesteBad', shelly: 'shellyswitch25-109DA4'}\n    ],\n    west: [\n        {name: 'Wohnzimmer1', shelly: 'shellyswitch25-10A277'}\n    ]\n};\n\nconst energy = msg.payload && msg.payload.ENERGY ? msg.payload.ENERGY : {};\nconst pvW = decodeSenecValue(energy.GUI_INVERTER_POWER);\nconst now = new Date();\nconst hour = now.getHours() + now.getMinutes() / 60;\nconst sunny = pvW >= cfg.shadeOnW;\n\nlet phase = 'none';\nif (hour >= cfg.eastStartHour && hour < cfg.eastEndHour) phase = 'east';\nelse if (hour >= cfg.eastEndHour && hour < cfg.westEndHour) phase = 'west';\n\nlet commands = [];\nconst ts = now.toISOString();\n\nif (sunny && phase === 'east') {\n    for (const d of devices.east) {\n        commands.push({\n            topic: 'shellies/' + d.shelly + '/roller/0/command/pos',\n            payload: cfg.shadePos\n        });\n    }\n    node.warn(ts + ' OST-SCHATTEN: ' + devices.east.map(d=>d.name).join(',') + ' auf ' + cfg.shadePos + '% (PV=' + pvW + 'W)');\n}\n\nif (phase === 'west') {\n    // Sonne ist nach Westen gewandert - Ostseite wieder oeffnen\n    for (const d of devices.east) {\n        commands.push({\n            topic: 'shellies/' + d.shelly + '/roller/0/command/pos',\n            payload: cfg.openPos\n        });\n    }\n    if (sunny) {\n        for (const d of devices.west) {\n            commands.push({\n                topic: 'shellies/' + d.shelly + '/roller/0/command/pos',\n                payload: cfg.shadePos\n            });\n        }\n        node.warn(ts + ' WEST-SCHATTEN: ' + devices.west.map(d=>d.name).join(',') + ' auf ' + cfg.shadePos + '% (PV=' + pvW + 'W)');\n    }\n}\n\nif (hour >= cfg.westEndHour) {\n    // Feierabend: alles oeffnen\n    const all = [...devices.east, ...devices.west];\n    for (const d of all) {\n        commands.push({\n            topic: 'shellies/' + d.shelly + '/roller/0/command/pos',\n            payload: cfg.openPos\n        });\n    }\n    node.warn(ts + ' ABEND: alles oeffnen');\n}\n\nnode.status({\n    fill: commands.length > 0 ? 'green' : 'blue',\n    shape: 'dot',\n    text: (commands.length > 0 ? '\u26a1' : '\u00b7') + ' PV=' + pvW + 'W ' + phase + (sunny?' sonnig':'') + ' | ' + commands.length + ' cmds'\n});\n\nif (commands.length === 0) return null;\nreturn [commands];\n",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 910,
+    "y": 120,
+    "wires": [
+      [
+        "mqtt-out-shading"
+      ]
+    ]
+  },
+  {
+    "id": "mqtt-out-shading",
+    "type": "mqtt out",
+    "z": "tab-solar-shading-draft",
+    "name": "Rollos per MQTT",
+    "topic": "",
+    "qos": "0",
+    "retain": "false",
+    "respTopic": "",
+    "contentType": "",
+    "userProps": "",
+    "correl": "",
+    "expiry": "",
+    "broker": "mqtt-broker-smarthome",
+    "x": 1140,
+    "y": 120,
+    "wires": [
+      [
+        "debug-shading-live"
+      ]
+    ]
+  },
+  {
+    "id": "debug-shading-live",
+    "type": "debug",
+    "z": "tab-solar-shading-draft",
+    "name": "Beschattung Log",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "true",
+    "targetType": "full",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 1140,
+    "y": 180,
+    "wires": []
+  },
+  {
+    "id": "comment-east-devices",
+    "type": "comment",
+    "z": "tab-solar-shading-draft",
+    "name": "Ostseite (aktiv): K\u00fcche2, G\u00e4steBad",
+    "info": "K\u00fcche2: shellyswitch25-1099F3 (192.168.178.26). G\u00e4steBad: shellyswitch25-109DA4 (192.168.178.33).",
+    "x": 340,
+    "y": 220,
+    "wires": []
+  },
+  {
+    "id": "comment-west-devices",
+    "type": "comment",
+    "z": "tab-solar-shading-draft",
+    "name": "Westseite (aktiv): Wohnzimmer1",
+    "info": "Wohnzimmer1: shellyswitch25-10A277 (192.168.178.30, via FRITZ!Repeater 2400).",
+    "x": 320,
+    "y": 280,
+    "wires": []
+  },
+  {
+    "id": "comment-shading-info",
+    "type": "comment",
+    "z": "tab-solar-shading-draft",
+    "name": "Info: nur Erdgeschoss, keine Schlafzimmer",
+    "info": "Getestet 12.07.2026. Nur K\u00fcche2, G\u00e4steBad, Wohnzimmer1. Schlafzimmer und 1.OG bewusst ausgenommen. Badezimmer/Arbeitszimmer2 sind offline.",
+    "x": 340,
+    "y": 340,
+    "wires": []
+  }
+]
