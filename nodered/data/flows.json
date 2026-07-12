@@ -33,91 +33,6 @@
     "sessionExpiry": ""
   },
   {
-    "id": "inject-mqtt-test",
-    "type": "inject",
-    "z": "tab-smarthome-base",
-    "name": "MQTT Test senden",
-    "props": [
-      {
-        "p": "payload"
-      },
-      {
-        "p": "topic",
-        "vt": "str"
-      }
-    ],
-    "repeat": "",
-    "crontab": "",
-    "once": true,
-    "onceDelay": "5",
-    "topic": "hermes/nodered/test",
-    "payload": "Node-RED MQTT test",
-    "payloadType": "str",
-    "x": 180,
-    "y": 100,
-    "wires": [
-      [
-        "mqtt-out-test"
-      ]
-    ]
-  },
-  {
-    "id": "mqtt-out-test",
-    "type": "mqtt out",
-    "z": "tab-smarthome-base",
-    "name": "an Mosquitto",
-    "topic": "",
-    "qos": "0",
-    "retain": "false",
-    "respTopic": "",
-    "contentType": "",
-    "userProps": "",
-    "correl": "",
-    "expiry": "",
-    "broker": "mqtt-broker-smarthome",
-    "x": 430,
-    "y": 100,
-    "wires": []
-  },
-  {
-    "id": "mqtt-in-shelly-status",
-    "type": "mqtt in",
-    "z": "tab-smarthome-base",
-    "name": "Shelly Status lesen",
-    "topic": "shellies/+/roller/0/#",
-    "qos": "0",
-    "datatype": "auto-detect",
-    "broker": "mqtt-broker-smarthome",
-    "nl": false,
-    "rap": true,
-    "rh": 0,
-    "inputs": 0,
-    "x": 180,
-    "y": 180,
-    "wires": [
-      [
-        "debug-shelly-status"
-      ]
-    ]
-  },
-  {
-    "id": "debug-shelly-status",
-    "type": "debug",
-    "z": "tab-smarthome-base",
-    "name": "Shelly Status Debug",
-    "active": true,
-    "tosidebar": true,
-    "console": false,
-    "tostatus": false,
-    "complete": "true",
-    "targetType": "full",
-    "statusVal": "",
-    "statusType": "auto",
-    "x": 450,
-    "y": 180,
-    "wires": []
-  },
-  {
     "id": "comment-next",
     "type": "comment",
     "z": "tab-smarthome-base",
@@ -132,7 +47,7 @@
     "type": "tab",
     "label": "Solar-Beschattung Jalousien",
     "disabled": false,
-    "info": "Aktiv. Ost (Sonnenaufgang\u2013Mittag): K\u00fcche2, G\u00e4steBad. West (Mittag\u2013Sonnenuntergang): Wohnzimmer1, Schlafzimmer1-3. Schwellwert: 2500W PV. Sonnenzeiten via NOAA-Formel (Hamburg).",
+    "info": "Solar-Beschattung + Au\u00dfenlicht. NOAA-Sonnenzeiten (Hamburg). Ost=Sonnenauf-Mittag, West=Mittag-Sonnunter. Nacht=alles zu. Au\u00dfenlicht abends an, nachts ab 01:00 aus, morgens bei Bew\u00f6lkung an.",
     "name": ""
   },
   {
@@ -263,8 +178,8 @@
     "id": "comment-east-devices",
     "type": "comment",
     "z": "tab-solar-shading-draft",
-    "name": "Ostseite (aktiv): K\u00fcche2, G\u00e4steBad",
-    "info": "K\u00fcche2: shellyswitch25-1099F3 (192.168.178.26). G\u00e4steBad: shellyswitch25-109DA4 (192.168.178.33).",
+    "name": "Ostseite: K\u00fcche2, G\u00e4steBad",
+    "info": "K\u00fcche2: shellyswitch25-1099F3 (192.168.178.26)\nG\u00e4steBad: shellyswitch25-109DA4 (192.168.178.33)",
     "x": 340,
     "y": 220,
     "wires": []
@@ -273,8 +188,8 @@
     "id": "comment-west-devices",
     "type": "comment",
     "z": "tab-solar-shading-draft",
-    "name": "Westseite (aktiv): Wohnzimmer1",
-    "info": "Wohnzimmer1: shellyswitch25-10A277 (192.168.178.30, via FRITZ!Repeater 2400).",
+    "name": "Westseite: Wohnzimmer1, Schlafzimmer1-3",
+    "info": "Wohnzimmer1: shellyswitch25-10A277 (192.168.178.30)\nSchlafzimmer1: shellyswitch25-F3FDC4 (192.168.178.37)\nSchlafzimmer2: shellyswitch25-10A1DE (192.168.178.50)\nSchlafzimmer3: shellyswitch25-1097AB (192.168.178.24)",
     "x": 320,
     "y": 280,
     "wires": []
@@ -283,10 +198,48 @@
     "id": "comment-shading-info",
     "type": "comment",
     "z": "tab-solar-shading-draft",
-    "name": "Info: nur Erdgeschoss, keine Schlafzimmer",
-    "info": "Getestet 12.07.2026. Nur K\u00fcche2, G\u00e4steBad, Wohnzimmer1. Schlafzimmer und 1.OG bewusst ausgenommen. Badezimmer/Arbeitszimmer2 sind offline.",
+    "name": "Au\u00dfenlicht + Zeitplan",
+    "info": "Au\u00dfenbeleuchtung: shelly1-E098068CC9EB (192.168.178.35)\n\nJalousien:\n\ud83c\udf05 Ost (Sonnenauf\u2013Mittag): K\u00fcche2 + G\u00e4steBad auf 50% bei PV\u22652500W\n\u2600\ufe0f West (Mittag\u2013Sonnunter): Wohnzimmer1 + Schlafzimmer1-3 auf 50%\n\ud83c\udf19 Nacht: alles schlie\u00dfen\n\nAu\u00dfenlicht:\n\ud83d\udd06 Sonnenuntergang \u2192 an\n\ud83c\udf19 01:00 \u2192 aus\n\ud83c\udf24\ufe0f Morgens bew\u00f6lkt (PV<500W) \u2192 an\n\u2600\ufe0f PV\u2265500W \u2192 aus",
     "x": 340,
     "y": 340,
+    "wires": []
+  },
+  {
+    "id": "mqtt-in-shelly-status",
+    "type": "mqtt in",
+    "z": "tab-smarthome-base",
+    "name": "Shelly Status (read-only)",
+    "topic": "shellies/+/roller/0/#",
+    "qos": "0",
+    "datatype": "auto-detect",
+    "broker": "mqtt-broker-smarthome",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 180,
+    "y": 180,
+    "wires": [
+      [
+        "debug-shelly-status"
+      ]
+    ]
+  },
+  {
+    "id": "debug-shelly-status",
+    "type": "debug",
+    "z": "tab-smarthome-base",
+    "name": "Shelly Positions-Tracker",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 430,
+    "y": 180,
     "wires": []
   }
 ]
