@@ -1,160 +1,83 @@
 # Siri-/iPhone-Steuerung für Jalousien
 
-## Ziel
+## Umsetzung (aktiv seit 12.07.2026)
 
-Die Rollos sollen zusätzlich zur Zeit-/Solarautomatik per iPhone und Siri steuerbar sein, z. B.:
+Die Rollo-Steuerung läuft über einen zentralen HTTP-Endpoint in Node-RED:
 
-- „Hey Siri, Wohnzimmer Rollos hoch“
-- „Hey Siri, Schlafzimmer Rollos runter“
-- „Hey Siri, alle Rollos stoppen“
-- „Hey Siri, Sonnenschutz Westseite aktivieren“
+```
+http://192.168.178.40:1880/rollo?room=<raum>&pos=<0-100>
+http://192.168.178.40:1880/rollo?room=<raum>&action=<stop>
+```
 
-Die Sprachsteuerung soll die bestehende Architektur ergänzen, nicht ersetzen:
+## Architektur
 
 ```text
-iPhone / Siri
-  → Apple Kurzbefehle oder HomeKit
-  → Node-RED
-  → MQTT / Shelly
+Siri / Apple Kurzbefehl
+  → HTTP-Request im Heimnetz
+  → Node-RED /rollo Endpoint
+  → MQTT / Shelly Gen1 oder RPC (Gen2/4)
   → Jalousie
+
+WhatsApp/Telegram
+  → Hermes Gateway
+  → Hermes Skill "rollo-steuerung"
+  → curl → Node-RED /rollo → MQTT → Shelly
+
+Alexa (später)
+  → Alexa Skill → HTTPS → Node-RED (nur mit VPN/sicherem Tunnel)
 ```
 
-## Optionen
+## Befehle
 
-### Option A — Apple Kurzbefehle + Node-RED Webhooks
-
-Das ist der einfachste und schnellste Weg.
-
-Ablauf:
-
-1. Node-RED stellt lokale Webhook-URLs bereit, z. B.:
-   - `/rollo/wohnzimmer/open`
-   - `/rollo/wohnzimmer/close`
-   - `/rollo/wohnzimmer/stop`
-   - `/rollo/west/50`
-2. Auf jedem iPhone wird ein Apple-Kurzbefehl angelegt.
-3. Siri startet diesen Kurzbefehl per Sprachbefehl.
-4. Der Kurzbefehl ruft die Node-RED-URL im Heimnetz auf.
-5. Node-RED sendet das passende MQTT-Kommando an die Shellys.
-
-Vorteile:
-
-- kein Home Assistant nötig;
-- sehr schnell umzusetzen;
-- Sprachbefehle frei formulierbar;
-- passt gut zur bestehenden Node-RED/MQTT-Architektur.
-
-Nachteile:
-
-- funktioniert zunächst nur zuverlässig im Heimnetz oder per VPN;
-- pro iPhone müssen Kurzbefehle angelegt/geteilt werden;
-- nicht so elegant wie echte HomeKit-Geräte in der Apple-Home-App.
-
-Empfehlung: **als erste Stufe verwenden**, weil es wenig Infrastruktur braucht und gut testbar ist.
-
-### Option B — Homebridge / HomeKit
-
-Homebridge kann MQTT-/Shelly-Geräte als HomeKit-Geräte bereitstellen. Dann erscheinen Rollos in der Apple Home App und Siri kann sie nativ steuern.
-
-Ablauf:
-
-```text
-Shelly/MQTT ↔ Homebridge ↔ Apple HomeKit ↔ Siri
-```
-
-Vorteile:
-
-- Rollos erscheinen als echte Geräte in Apple Home;
-- Siri versteht natürlichere Befehle;
-- auch Szenen und Räume in Apple Home möglich;
-- schöner für tägliche Bedienung.
-
-Nachteile:
-
-- zusätzlicher Dienst im Docker-Stack;
-- HomeKit-Bridge muss sauber gepflegt werden;
-- MQTT-/Shelly-Topic-Mapping muss exakt stimmen;
-- Gen1 und Gen2/Gen4 Shellys unterscheiden sich bei MQTT-Kommandos.
-
-Empfehlung: **zweite Stufe**, wenn die Node-RED-Logik stabil ist.
-
-### Option C — Home Assistant mit HomeKit-Bridge
-
-Home Assistant könnte Shellys erkennen und per HomeKit-Bridge an Apple Home weiterreichen.
-
-Vorteile:
-
-- sehr gute HomeKit-/Siri-Integration;
-- viele Integrationen für Gardena, Tesla, Wärmepumpe usw.;
-- komfortable UI.
-
-Nachteile:
-
-- größerer Systemumfang;
-- wir wollten bewusst schlank mit Node-RED/MQTT starten;
-- Automationslogik würde teilweise zwischen Node-RED und Home Assistant aufgeteilt.
-
-Empfehlung: **später prüfen**, wenn weitere Integrationen den Mehrwert rechtfertigen.
-
-## Empfohlener Umsetzungsweg
-
-### Stufe 1 — Sichere lokale Sprachbefehle über Kurzbefehle
-
-Zuerst nur wenige Webhooks in Node-RED:
-
-| Sprachbefehl | Node-RED-Aktion |
+| Sprachbefehl | Endpoint |
 |---|---|
-| „Wohnzimmer Rollos hoch“ | Wohnzimmer1 + Wohnzimmer2 öffnen |
-| „Wohnzimmer Rollos runter“ | Wohnzimmer1 + Wohnzimmer2 schließen oder auf Zielposition fahren |
-| „Schlafzimmer Rollos hoch“ | Schlafzimmer1 + Schlafzimmer2 öffnen |
-| „Schlafzimmer Rollos runter“ | Schlafzimmer1 + Schlafzimmer2 schließen oder auf Zielposition fahren |
-| „Alle Rollos hoch“ | alle definierten Rollos öffnen |
-| „Alle Rollos stoppen“ | alle laufenden Rollos stoppen |
-| „Sonnenschutz Ostseite“ | Ostgruppe auf 50 % |
-| „Sonnenschutz Westseite“ | Westgruppe auf 50 % |
+| „Wohnzimmer Rollos hoch" | `/rollo?room=wohnzimmer&pos=100` |
+| „Küche Jalousien runter" | `/rollo?room=kueche&pos=0` |
+| „Erdgeschoss Rollos 50%" | `/rollo?room=eg&pos=50` |
+| „Alle Rollos stopp" | `/rollo?room=alle&action=stop` |
+| „Schlafzimmer zu" | `/rollo?room=schlafzimmer&action=zu` |
 
-Sicherheitsregeln:
+## Verfügbare Räume/Etagen
 
-- Webhooks nur im Heimnetz erreichbar machen.
-- Keine offenen Internet-Ports für Node-RED.
-- Optional einen einfachen geheimen Pfad oder Token verwenden, z. B. `/rollo/<token>/wohnzimmer/open`.
-- Zuerst nur Debug-Ausgabe, dann einzelne Rollos, dann Gruppen.
-
-### Stufe 2 — Apple Home/HomeKit schöner machen
-
-Wenn Stufe 1 zuverlässig läuft:
-
-- Homebridge als Docker-Service ergänzen;
-- Rollos als HomeKit-Geräte abbilden;
-- Räume und Szenen in Apple Home definieren;
-- Siri-Befehle natürlicher machen.
-
-### Stufe 3 — Externe Bedienung
-
-Falls Sprachsteuerung auch unterwegs funktionieren soll:
-
-- bevorzugt VPN ins Heimnetz;
-- alternativ Apple Home Hub/HomeKit, wenn Homebridge stabil läuft;
-- keine direkte öffentliche Node-RED-Freigabe.
-
-## Beziehung zur Solar-Beschattung
-
-Siri-Kommandos sollen die Automatik nicht unkontrolliert bekämpfen. Deshalb sollte später eine Override-Logik eingeführt werden:
-
-- manuelles Siri-Kommando setzt einen temporären Override;
-- Automatik respektiert den Override z. B. 1–3 Stunden;
-- „Automatik wieder aktivieren“ kann als eigener Siri-Befehl angelegt werden.
-
-Beispiele:
-
-| Sprachbefehl | Wirkung |
+| Befehl | Betroffene Rollos |
 |---|---|
-| „Sonnenschutz Ostseite aktivieren“ | Ostrollos auf 50 %, Override aktiv |
-| „Sonnenschutz Westseite aktivieren“ | Westrollos auf 50 %, Override aktiv |
-| „Rollo Automatik wieder aktivieren“ | Override löschen, Solar-/Zeitlogik übernimmt wieder |
+| `kueche` | Küche1 + Küche2 |
+| `wohnzimmer` | Wohnzimmer1 + Wohnzimmer2 |
+| `schlafzimmer` | Schlafzimmer1-3 |
+| `arbeitszimmer` | Arbeitszimmer1 + Arbeitszimmer2 |
+| `gaestebad` | Gästebad |
+| `badezimmer` | Badezimmer |
+| `till`, `jan` | Einzelne Rollos 2. OG |
+| `eg` / `erdgeschoss` | Küche1-2, Gästebad, Wohnzimmer1-2 |
+| `1og` / `obergeschoss` | Schlafzimmer1-3, Arbeitszimmer1-2, Badezimmer |
+| `2og` / `dachgeschoss` | Till, Jan |
+| `alle` | Alle 13 Rollos |
 
-## Empfehlung
+## Siri-Kurzbefehl einrichten
 
-Für den Start: **Apple Kurzbefehle → Node-RED Webhooks → MQTT/Shelly**.
+1. **Apple Kurzbefehle-App** öffnen
+2. Neuer Kurzbefehl → **„URL"**-Aktion hinzufügen
+3. URL: `http://192.168.178.40:1880/rollo?room=wohnzimmer&pos=100`
+4. **„Inhalte von URL abrufen"**-Aktion hinzufügen (Methode: GET)
+5. Kurzbefehl benennen: z.B. „Wohnzimmer Rollos hoch"
+6. Mit Siri: „Hey Siri, Wohnzimmer Rollos hoch"
 
-Das ist schlank, passt zur aktuellen Architektur und kann ohne Home Assistant umgesetzt werden. Wenn die Rollo-Logik stabil ist, kann Homebridge später für eine schönere HomeKit-/Siri-Integration ergänzt werden.
+**Wichtig:** Das iPhone muss im Heimnetz sein (WLAN). Von unterwegs nur per VPN (Tailscale).
+
+## Hermes (Telegram / WhatsApp)
+
+Der Skill `rollo-steuerung` ist unter `~/.hermes/skills/smart-home/rollo-steuerung/`
+installiert. Hermes erkennt natürliche Befehle wie:
+
+- „Mach die Rollos im Wohnzimmer runter"
+- „Erdgeschoss Jalousien auf 50%"
+- „Stopp alle Rollos"
+
+und führt sie über den Node-RED-Endpoint aus.
+
+## Sicherheit
+
+- Endpoint nur im Heimnetz erreichbar (192.168.178.40:1880)
+- Kein offener Internet-Port
+- State-Tracking verhindert Zurückstellen manueller Änderungen
+- Küche1/2 nie ganz schließen (Blumen, min. 20%)

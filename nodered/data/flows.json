@@ -241,5 +241,99 @@
     "x": 430,
     "y": 180,
     "wires": []
+  },
+  {
+    "id": "tab-rollo-remote",
+    "type": "tab",
+    "label": "Rollo-Steuerung (Siri/WA/TG)",
+    "disabled": false,
+    "info": "HTTP-Endpoint fuer Rollo-Steuerung. Genutzt von Siri-Kurzbefehlen, Hermes-Skills, Alexa."
+  },
+  {
+    "id": "http-rollo-in",
+    "type": "http in",
+    "z": "tab-rollo-remote",
+    "name": "POST /rollo",
+    "url": "/rollo",
+    "method": "post",
+    "upload": false,
+    "swaggerDoc": "",
+    "x": 120,
+    "y": 120,
+    "wires": [
+      [
+        "fn-rollo-parse"
+      ]
+    ]
+  },
+  {
+    "id": "http-rollo-in-get",
+    "type": "http in",
+    "z": "tab-rollo-remote",
+    "name": "GET /rollo",
+    "url": "/rollo",
+    "method": "get",
+    "upload": false,
+    "swaggerDoc": "",
+    "x": 120,
+    "y": 180,
+    "wires": [
+      [
+        "fn-rollo-parse"
+      ]
+    ]
+  },
+  {
+    "id": "fn-rollo-parse",
+    "type": "function",
+    "z": "tab-rollo-remote",
+    "name": "Raum+Action -> MQTT",
+    "func": "// Rollo-Steuerung: nimmt room + action/pos, sendet MQTT-Kommandos.\n// GET: /rollo?room=kueche1&pos=50\n// POST: {\"room\": \"kueche1\", \"pos\": 50} oder {\"room\":\"wohnzimmer\",\"action\":\"zu\"}\n\nconst devices = {\n    'kueche1':          {shelly:'shelly2pmg4-58e6c5324770', gen:4, raum:'K\u00fcche'},\n    'kueche2':          {shelly:'shellyswitch25-1099F3', raum:'K\u00fcche'},\n    'gaestebad':        {shelly:'shellyswitch25-109DA4', raum:'G\u00e4steBad'},\n    'gaestewc':         {shelly:'shellyswitch25-109DA4', raum:'G\u00e4steBad'},\n    'wohnzimmer1':      {shelly:'shellyswitch25-10A277', raum:'Wohnzimmer'},\n    'wohnzimmer2':      {shelly:'shelly2pmg4-58e6c530408c', gen:4, raum:'Wohnzimmer'},\n    'schlafzimmer1':    {shelly:'shellyswitch25-F3FDC4', raum:'Schlafzimmer'},\n    'schlafzimmer2':    {shelly:'shellyswitch25-10A1DE', raum:'Schlafzimmer'},\n    'schlafzimmer3':    {shelly:'shellyswitch25-1097AB', raum:'Schlafzimmer'},\n    'arbeitszimmer1':   {shelly:'shellyswitch25-10986E', raum:'Arbeitszimmer'},\n    'arbeitszimmer2':   {shelly:'shelly2pmg4-48f6eedad190', gen:4, raum:'Arbeitszimmer'},\n    'badezimmer':       {shelly:'shellyplus2pm-ecc9ffc14310', gen:2, raum:'Badezimmer'},\n    'till':             {shelly:'shellyswitch25-109899', raum:'Till'},\n    'jan':              {shelly:'shelly2pmg4-e8f60a60b50c', gen:4, raum:'Jan'}\n};\n\n// Raum-Aliase: \"wohnzimmer\" -> wohnzimmer1+wohnzimmer2\nconst raumAliases = {\n    'kueche':           ['kueche1','kueche2'],\n    'wohnzimmer':       ['wohnzimmer1','wohnzimmer2'],\n    'schlafzimmer':     ['schlafzimmer1','schlafzimmer2','schlafzimmer3'],\n    'arbeitszimmer':    ['arbeitszimmer1','arbeitszimmer2'],\n    'erdgeschoss':      ['kueche1','kueche2','gaestebad','wohnzimmer1','wohnzimmer2'],\n    'eg':               ['kueche1','kueche2','gaestebad','wohnzimmer1','wohnzimmer2'],\n    '1og':              ['schlafzimmer1','schlafzimmer2','schlafzimmer3','arbeitszimmer1','arbeitszimmer2','badezimmer'],\n    'erstesog':         ['schlafzimmer1','schlafzimmer2','schlafzimmer3','arbeitszimmer1','arbeitszimmer2','badezimmer'],\n    'obergeschoss':     ['schlafzimmer1','schlafzimmer2','schlafzimmer3','arbeitszimmer1','arbeitszimmer2','badezimmer'],\n    '2og':              ['till','jan'],\n    'dachgeschoss':     ['till','jan'],\n    'alle':             ['kueche1','kueche2','gaestebad','wohnzimmer1','wohnzimmer2',\n                          'schlafzimmer1','schlafzimmer2','schlafzimmer3',\n                          'arbeitszimmer1','arbeitszimmer2','badezimmer','till','jan']\n};\n\nconst q = msg.req && msg.req.query ? msg.req.query : {};\nconst body = typeof msg.payload === 'object' ? msg.payload : {};\nconst room = (body.room || q.room || '').toLowerCase().replace(/[\u00e4\u00f6\u00fc\u00df]/g, m => ({'\u00e4':'ae','\u00f6':'oe','\u00fc':'ue','\u00df':'ss'})[m]);\nlet action = body.action || q.action || '';\nlet pos = body.pos || q.pos || '';\n\n// Action zu Position \u00fcbersetzen\nif (action) {\n    const a = action.toLowerCase();\n    if (['auf','hoch','rauf','open','\u00f6ffnen','oeffnen'].includes(a)) pos = 100;\n    else if (['zu','runter','ab','close','schlie\u00dfen','schliessen'].includes(a)) pos = 0;\n    else if (['stop','stopp','halt'].includes(a)) pos = 'stop';\n    else { msg.payload = {error:'Unbekannte Aktion: '+action}; return [null, msg]; }\n}\n\nif (pos === '' || pos === undefined) {\n    msg.payload = {error:'Keine Position/Aktion angegeben. Nutze ?room=...&pos=50 oder &action=zu'};\n    return [null, msg];\n}\n\n// R\u00e4ume aufl\u00f6sen\nlet targets = raumAliases[room] || [room];\nlet commands = [];\nlet notFound = [];\n\nfor (const r of targets) {\n    const dev = devices[r];\n    if (!dev) { notFound.push(r); continue; }\n    if (pos === 'stop') {\n        commands.push({\n            topic: dev.gen >= 2 ? dev.shelly + '/rpc' : 'shellies/' + dev.shelly + '/roller/0/command',\n            payload: dev.gen >= 2 ? {id:1, src:'nodered', method:'Cover.Stop', params:{id:0}} : 'stop'\n        });\n    } else {\n        const p = parseInt(pos);\n        if (isNaN(p) || p < 0 || p > 100) {\n            msg.payload = {error:'Position muss 0-100 sein: '+pos};\n            return [null, msg];\n        }\n        commands.push({\n            topic: dev.gen >= 2 ? dev.shelly + '/rpc' : 'shellies/' + dev.shelly + '/roller/0/command/pos',\n            payload: dev.gen >= 2 ? {id:1, src:'nodered', method:'Cover.GoToPosition', params:{id:0, pos:p}} : p\n        });\n    }\n}\n\nif (notFound.length && commands.length === 0) {\n    msg.payload = {error:'Raum nicht gefunden: ' + notFound.join(', ')};\n    return [null, msg];\n}\n\nmsg.payload = {\n    ok: true,\n    rooms: targets.filter(r => devices[r]).map(r => devices[r].raum || r),\n    notFound: notFound,\n    commands: commands.length,\n    pos: pos\n};\n// Ausgabe 1: MQTT-Kommandos, Ausgabe 2: HTTP-Antwort\nreturn [commands.length > 0 ? commands : null, msg];\n",
+    "outputs": 2,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 340,
+    "y": 150,
+    "wires": [
+      [
+        "mqtt-out-rollo"
+      ],
+      [
+        "http-rollo-resp"
+      ]
+    ]
+  },
+  {
+    "id": "mqtt-out-rollo",
+    "type": "mqtt out",
+    "z": "tab-rollo-remote",
+    "name": "MQTT Kommando",
+    "topic": "",
+    "qos": "0",
+    "retain": "false",
+    "respTopic": "",
+    "contentType": "",
+    "userProps": "",
+    "correl": "",
+    "expiry": "",
+    "broker": "mqtt-broker-smarthome",
+    "x": 580,
+    "y": 140,
+    "wires": []
+  },
+  {
+    "id": "http-rollo-resp",
+    "type": "http response",
+    "z": "tab-rollo-remote",
+    "name": "Antwort",
+    "statusCode": "",
+    "headers": {
+      "content-type": "application/json"
+    },
+    "x": 580,
+    "y": 200,
+    "wires": []
   }
 ]
