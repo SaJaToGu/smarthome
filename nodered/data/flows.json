@@ -335,5 +335,56 @@
     "x": 580,
     "y": 200,
     "wires": []
+  },
+  {
+    "id": "http-rollo-alias-0",
+    "type": "http in",
+    "z": "tab-rollo-remote",
+    "name": "GET /rollos",
+    "url": "/rollos",
+    "method": "get",
+    "upload": false,
+    "swaggerDoc": "",
+    "x": 120,
+    "y": 240,
+    "wires": [
+      [
+        "fn-rollo-parse"
+      ]
+    ]
+  },
+  {
+    "id": "http-rollo-alias-1",
+    "type": "http in",
+    "z": "tab-rollo-remote",
+    "name": "GET /jalousie",
+    "url": "/jalousie",
+    "method": "get",
+    "upload": false,
+    "swaggerDoc": "",
+    "x": 120,
+    "y": 300,
+    "wires": [
+      [
+        "fn-rollo-parse"
+      ]
+    ]
+  },
+  {
+    "id": "http-rollo-alias-2",
+    "type": "http in",
+    "z": "tab-rollo-remote",
+    "name": "GET /jalousien",
+    "url": "/jalousien",
+    "method": "get",
+    "upload": false,
+    "swaggerDoc": "",
+    "x": 120,
+    "y": 360,
+    "wires": [
+      [
+        "fn-rollo-parse"
+      ]
+    ]
   }
 ]
