@@ -179,7 +179,7 @@
     "type": "comment",
     "z": "tab-solar-shading-draft",
     "name": "Ostseite: K\u00fcche2, G\u00e4steBad",
-    "info": "K\u00fcche2: shellyswitch25-1099F3 (192.168.178.26)\nG\u00e4steBad: shellyswitch25-109DA4 (192.168.178.33)",
+    "info": "K\u00fcche1: shelly2pmg4-58e6c5324770 (192.168.178.59, Gen4 RPC)\nK\u00fcche2: shellyswitch25-1099F3 (192.168.178.26, Gen1)\nG\u00e4steBad: shellyswitch25-109DA4 (192.168.178.33, Gen1)\n\nBeide K\u00fcche nachts nur 20% (Blumen auf Fensterbank).",
     "x": 340,
     "y": 220,
     "wires": []
